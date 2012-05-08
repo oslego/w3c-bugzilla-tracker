@@ -1,0 +1,117 @@
+<!DOCTYPE HTML>
+<html lang="ru-RU">
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <style type="text/css">
+    
+    #issue-dashboard{
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: #eee;
+    } 
+    
+    #issue-dashboard.open{
+        height: 50%;
+        width: 50%;
+        overflow: auto;
+    }
+    
+    #issue-dashboard .issue-list{
+        display: none;      
+        margin: 0;
+        padding: 0; 
+        list-style: none;   
+    }  
+    
+    #issue-dashboard.open .issue-list{
+        display: block;   
+    } 
+    
+    .issue-dashboard-header{  
+        display: block;     
+        padding: 5px 20px;
+    }
+    
+   .ok .issue-dashboard-header{
+        background: yellowgreen;
+    }
+    
+    .warning .issue-dashboard-header{
+        background: #ffcc55;
+    }  
+    
+    .issue-list li{
+        padding: 15px 15px 20px;
+        margin: 0;
+    }
+    
+    .issue-list li:nth-child(2n){
+        background: #ebebeb;
+    } 
+    
+    .issue-list .issue-marker,
+    .issue-list .showMarkup pre{
+        display: block;
+        clear: both; 
+        border-top: 1px solid #d7d7d7; 
+        padding-top: 7px;
+    }                      
+    
+    .issue-list .showMarkup .issue-marker,
+    .issue-list pre{
+        display: none;
+    }  
+    
+    .issue-list pre{
+        background: #333;  
+        color: white;
+        padding: 0;
+        margin: 0;
+        overflow: auto;
+    }
+    
+    .issue-list span{
+        color: #333;
+        font-size: 0.9em;
+        font-weight: bold;
+        float: left;  
+        text-transform: uppercase;
+    }  
+    
+    .issue-list .toggle{
+        float: right;
+        clear: right;
+    }
+    
+    </style>
+</head>
+<body>
+
+    <div class="issue-marker" data-bug_id="15679" data-bug_status="NEW">
+        <a href="https://www.w3.org/Bugs/Public/show_bug.cgi?id=15679">Bug-15679</a>
+        <div class="issue-details">
+            <p class="short-desc">elementFromPoint and CSS regions</p>
+        </div>
+    </div>
+
+    <script type="text/template" id="issue-template">
+    <div class="issue-marker" data-bug_id="{{bug_id}}" data-bug_status="{{bug_status}}">
+        <a href="https://www.w3.org/Bugs/Public/show_bug.cgi?id={{bug_id}}">Bug-{{bug_id}}</a>
+        <div class="issue-details">
+            <p class="short-desc">{{short_desc}}</p>
+        </div>
+    </div>
+    </script>  
+    
+    <script type="text/javascript" src="../BugzillaTrackerUtil.js"></script>
+    <script type="text/javascript" src="../BugzillaTracker.js"></script>
+
+    <script type="text/javascript">
+
+    checkSpecificationIssues("CSS", "Regions")
+
+    </script>
+</body>
+</html>

@@ -1,5 +1,175 @@
 (function () {
-    function getIssuesFromDocument () { 
+
+    function IssueDashboard(){
+        var _dashboard = document.createElement("div"),
+            _offlineIssues = {},
+            _onlineIssues = {},
+            _issueTemplate = null,
+            _header = document.createElement("a")
+            
+        _header.href = "#"
+        _header.className = "issue-dashboard-header"
+        _header.innerHTML = "Bug Dashboard"
+        
+        _header.addEventListener("click", function(e){
+            e.preventDefault()
+            _dashboard.classList.toggle("open")
+        })  
+        
+        _dashboard.id = "issue-dashboard" 
+        _dashboard.appendChild(_header)
+        
+        document.body.appendChild(_dashboard) 
+            
+        
+        function getNewIssues(){
+            var id, issues = []
+
+            for (id in _onlineIssues){
+
+                if (!_offlineIssues[id]){   
+                    // not found in the document. 
+                    // it's a new issue if the bug_status is not RESOLVED
+                    if (_onlineIssues[id].bug_status !== "RESOLVED") {
+
+                        _onlineIssues[id].issue_state = "new"
+                        issues.push(_onlineIssues[id])
+                    }
+                }
+            }
+
+            return issues 
+        }
+        
+        function getChangedIssues(){   
+            var id, changed, issues = []
+
+            for (id in _onlineIssues){
+
+                // is the bug in the doument?
+                if (_offlineIssues[id]){
+
+                    changed = false
+                    
+                    // bug description has changed  
+                    if (_offlineIssues[id].short_desc !== _onlineIssues[id].short_desc){
+                        
+                        _onlineIssues[id].issue_state = "updated"  
+                        changed = true 
+                    }     
+
+                    // bug status has changed  
+                    if (_offlineIssues[id].bug_status !== _onlineIssues[id].bug_status){  
+
+                        // changes from NEW -> ASSIGNED aren't noteworthy
+                        if ( !(_offlineIssues[id].bug_status == "NEW" && _onlineIssues[id].bug_status == "ASSIGNED") ){
+                            _onlineIssues[id].issue_state = "updated";  
+                            changed = true
+                        }
+                    }
+
+                    if (changed){
+                        // the issue has been changed, collect it
+                        issues.push(_onlineIssues[id])
+                    }
+                }
+            }
+
+            return issues
+         } 
+         
+        
+        function renderIssues(issues){
+            var issueItem, 
+                issueList = document.createElement("ul")
+            
+            issueList.className = "issue-list"
+            
+            issues.forEach(function(issue){ 
+               issueItem = document.createElement("li")  
+               
+               var meta = document.createElement("span")
+               meta.className = "issue-meta"
+               meta.innerHTML =  issue["issue_state"] 
+               
+               var toggle = document.createElement("a")
+               toggle.href = "#" 
+               toggle.className = "toggle"
+               toggle.innerHTML = "toggle markup"
+               toggle.addEventListener("click", function(parent){
+                   
+                   return function(e){  
+                       e.preventDefault()
+                       parent.classList.toggle("showMarkup")    
+                   }
+                                     
+               }(issueItem))
+                           
+               // populate the issue template with data
+               var issueDOM = _issueTemplate(issue) 
+                                
+               // container for issue markup
+               var markup = document.createElement("pre")
+               var temp = document.createElement("div")
+               temp.appendChild(issueDOM.cloneNode(true))
+               markup.textContent = temp.innerHTML
+                
+               issueItem.appendChild(meta)
+               issueItem.appendChild(toggle)
+               issueItem.appendChild(markup)
+               issueItem.appendChild(issueDOM)                           
+               
+               issueList.appendChild(issueItem)
+            })
+            
+            _dashboard.appendChild(issueList)
+        }   
+        
+        return {
+            setOnlineIssues: function(issues){
+                _onlineIssues = issues || []
+            },
+        
+            setOfflineIssues: function(issues){
+                _offlineIssues = issues || []
+            },
+            
+            setIssueTemplate: function(string){
+                _issueTemplate = TemplateManager.compile(string)
+            },
+        
+            sync: function(){ 
+                if (!_issueTemplate){
+                    throw new Error("IssueDashboard is missing 'issueTemplate'. Expected String, got "+ typeof _issueTemplate)
+                }
+                
+                if (!_onlineIssues){
+                    throw new TypeError("Missing 'serverIssues' from server. Expected Object, got "+ typeof _onlineIssues)
+                }
+
+                if (!_offlineIssues){
+                    throw new TypeError("Missing 'documentIssues' from document. Expected Object, got "+ typeof _offlineIssues)
+                }    
+                
+                var newIssues = getNewIssues(),
+                    changedIssues = getChangedIssues(),
+                    issues = newIssues.concat(changedIssues)   
+                    
+                // there's work to be done    
+                if (issues.length){
+                    
+                    _dashboard.className = "warning"
+                    renderIssues(issues)
+                    
+                    return
+                }         
+                
+                _dashboard.className = "ok"
+            }
+        }
+    }   
+    
+    function getIssuesFromDocument() { 
         var list = {},
             issues = document.querySelectorAll(".issue-marker");
 
@@ -23,154 +193,29 @@
         }
 
         return list;
-    } 
+    }
     
-    // Decorate the issues received from the sever with their state related to the issues in the page (new, changed)
-    function setIssueStates (serverIssues, documentIssues) {
-        var serverIssue, documentIssue;
+    var dashboard = new IssueDashboard()
+        dashboard.setIssueTemplate(document.querySelector("#issue-template").innerHTML)
         
-        if (!serverIssues){
-            throw new TypeError("Missing 'serverIssues' from server. Expected Object, got "+ typeof serverIssues)
-        }
-
-        if (!documentIssues){
-            throw new TypeError("Missing 'documentIssues' from document. Expected Object, got "+ typeof documentIssues)
-        }
-
-        for (var bugId in serverIssues){
-            serverIssue = serverIssues[bugId];
-            documentIssue = documentIssues[bugId];
-            
-            // is the bug in the doument?
-            if (documentIssues[bugId]){
-
-                // bug status has changed. it's an updated issue  
-                if ( (documentIssue.bug_status !== serverIssue.bug_status) || 
-                    (documentIssue.short_desc !== serverIssue.short_desc) ){  
-                                                                                
-                    // changes from NEW->ASSIGNED aren't noteworthy
-                    if ( ! (documentIssue.bug_status == "NEW" &&
-                         serverIssue.bug_status == "ASSIGNED") )
-                    serverIssue.issue_state = "updated"; 
-                }  
-            }
-            else{ 
-                // not found in the document. it's a new issue if the bug_status
-                // is not RESOLVED
-                if (serverIssue.bug_status === "RESOLVED") {
-                    //why do we want to show resolved issues that
-                    //have already been removed from the spec?
-
-                    //serverIssue.issue_state = 'resolved';
-                } else {
-                    serverIssue.issue_state = "new";
-                }
-            }
-        }
-
-        return serverIssues;    
-    } 
-
-    // "this" is bound to the "BugzillaTracker" instance
-    function renderIssues (serverIssues) {  
-
-        if (!serverIssues && !serverIssues.length){
-            return;
-        }     
-        
-        // get a list of bugs from the document  
-        var documentIssues = getIssuesFromDocument();
-        
-        // get the bugs list with the updated state (not bug status) related to the bugs already in the page
-        var issueList = setIssueStates(serverIssues, documentIssues);
-        
-        var fragment =  document.createDocumentFragment();
-        
-        for (var issueId in issueList){
-            
-            if (issueList[issueId]["issue_state"]){
-
-                // bind the bug data to the bug template
-                var issueFragment = this.renderIssue(issueList[issueId]);
-                
-                var wrapper = document.createElement("div"); 
-                var trigger = document.createElement("a");
-                trigger.className = "issue-markup-trigger";
-                trigger.href = "#";          
-                trigger.innerHTML = "toggle markup"
-                
-                wrapper.setAttribute("data-issue_state", issueList[issueId]["issue_state"]);
-                
-                wrapper.appendChild(trigger);
-                wrapper.appendChild(issueFragment);
-                fragment.appendChild(wrapper); 
-            }     
-        }
-       
-        var issueListContainer = document.querySelector("#issue-list"); 
-        issueListContainer.appendChild(fragment);
-         
-        // show/hide the markup for a bug entry
-        issueListContainer.addEventListener("click", toggleMarkup);
-    } 
+    var docIssues = getIssuesFromDocument()
+        dashboard.setOfflineIssues(docIssues)
     
-    function toggleMarkup (e) {
-        if (e.target.className && e.target.classList.contains("issue-markup-trigger")){      
-            e.preventDefault();       
-            
-            var parent = e.target.parentNode,
-                issueEl = parent.querySelector(".issue-marker"),
-                markup = issueEl.outerHTML;
-                
-           
-            parent.classList.toggle("showMarkup");
-            
-            // already generated the markup
-            if (parent.querySelector("pre")){   
-                return
-            }
-            else{
-                var pre = document.createElement("pre");
-                pre.textContent = markup;
-
-                parent.appendChild(pre);   
-            }
-        }
-    }  
-    
-    function filterIssues (e) {
-        if (e.target.name !== "issue-filter"){
-            return
-        } 
-        
-        var issueManager = document.querySelector("#issue-manager");
-        
-        switch(e.target.value){
-            case "all": 
-                issueManager.removeAttribute("data-view_state");
-            break;
-            
-            case "new":
-                issueManager.setAttribute("data-view_state", "new");
-            break;
-            
-            case "updated":
-                issueManager.setAttribute("data-view_state", "updated");
-            break;
-        }
-    }   
-
     
     window.checkSpecificationIssues = function (product, component) {
+        
         document.addEventListener("DOMContentLoaded", function(){  
-        BugzillaTracker.setIssueTemplate(document.querySelector("#issue-template").innerHTML); 
-        BugzillaTracker.sync({
+            
+            BugzillaTracker.sync({
                 product: product, // e.g., 'CSS'
                 component: component // e.g., "Regions",
             }, 
-            renderIssues); 
+            
+            function(issues){
+                dashboard.setOnlineIssues(issues)
+                dashboard.sync()
+            }); 
                
-        document.querySelector("#issue-manager form").addEventListener("change", filterIssues)   
-    });
+        });
     };
 })();

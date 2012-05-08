@@ -86,7 +86,8 @@
         
         var _cache = {},
             _config = { 
-                bugSearchURL: "https://www.w3.org/Bugs/Public/buglist.cgi",
+                // bugSearchURL: "https://www.w3.org/Bugs/Public/buglist.cgi",
+                bugSearchURL: "http://localhost/w3cbugs/mock/buglist.cgi",
                 scriptId: "BugzillaTracker",
                 onSync: _onSync
             },
@@ -275,22 +276,10 @@
             // overwrite default configuration (ex: Bugzilla buglist.cgi URL)
             setOptions: function(options){
                 _config = _extend({}, _config, options)
-            },
-            
-            setIssueTemplate: function(string){
-                if (string && typeof string){ 
-                    _config.issueTemplate = TemplateManager.compile(string);
-                    
-                    // usage
-                    // _config.issueTemplate({bug_id: "1234", short_desc: "oprea e aici!"})
-                }
-            },
-            
-            renderIssue: function(bugData){    
-                return _config.issueTemplate(bugData)
             }
         }
     })();
     
     window.BugzillaTracker = BugzillaTracker;
+    window.TemplateManager = TemplateManager;
 })()
